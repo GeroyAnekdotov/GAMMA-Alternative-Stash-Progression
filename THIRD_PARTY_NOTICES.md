@@ -7,3 +7,10 @@
 The v1.1 listing identifies that release as Proprietary. GeroyAnekdotov confirmed authority to publish this project's source and installable archive, including inherited v1.1 material. That authorization applies to this project's distribution. The repository grants no new license for reuse or redistribution.
 
 The rare adapter reads and adapts the compatible GAMMA setter from the user's installation at runtime. The project ships the adapter and its source fingerprints. The GAMMA script, wrapper scripts and original loot tables are supplied by the local installation.
+
+
+## License for original contributions (2026)
+
+GeroyAnekdotov's independently authored enhancements, integration code and other original contributions to this repository are released under the [MIT License](LICENSE). The MIT permission is intended to let other modders reuse and build on those original contributions, including in other mods.
+
+**Scope limitation:** The historical v1.1 material and any copyrightable third-party contributions are not automatically relicensed. The authorization to publish the earlier v1.1-derived material in this repository is not itself proof of permission to grant third parties redistribution or sublicensing rights. The MIT grant covers only portions owned or licensable by GeroyAnekdotov. Users must separately confirm any required rights to original/derived material by strelloc, Black Road Revisited, GAMMA, Anomaly or other authors. Runtime-adapted GAMMA code is supplied by users' own installations, not licensed here.
