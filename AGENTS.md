@@ -1,0 +1,9 @@
+# GAMMA Alternative Stash Progression
+
+- Keep the installable payload in root `gamedata/`. Keep WALO and other projects independent. Use Anomaly's stalker callback and GAMMA's stash manager. Never ship an override of either.
+- Use `gamma_alternative_stash_progression` for the modules and MCM namespace. Preserve the legacy corpse save field, table shape, MCM migration and duplicate-install check documented in [Architecture](docs/ARCHITECTURE.md).
+- Keep Very Fast (16% / 16%) as the fresh MCM default and use the same configured chances for normal and opted-in zombified stalkers. Classify the entity with `IsStalker` before checking community. Corpse requests must leave GAMMA's task counter and toolkit reward index unchanged. Commit staged native toolkit flags only after confirming a rare cache contains the corresponding toolkit. Preserve existing flags and location rules.
+- Keep rare integration scoped to one allocation and fail closed on unsupported manager or wrapper versions. Run the installed-source LuaJIT audit after backend changes. Debug Mode must never change RNG or save data.
+- Keep English and Russian game XML in Windows-1251. Use `VERSION.json` as the release version source. Run the automated checks and the manual matrix in DEVELOPMENT.md before describing a release as tested.
+- Treat GAMMA 0.9.5 as the verified target. Keep the Lua headers in sync with the version and preserve the credits in THIRD_PARTY_NOTICES.md. Stable ZIPs use the `_MO2.zip` suffix, and test ZIPs use `_TEST_MO2.zip`.
+- In the shared modding workspace, follow [the parent AGENTS.md](../AGENTS.md). After building and verifying an explicitly requested installable ZIP, retain it in `dist/` and pass that exact file to the shared `_tools/deliver_mo2.py` helper. A standalone clone builds locally and reports a skipped delivery if the helper is absent. Never deliver references, test inputs or check-only outputs. Treat installed mods, profiles and saves as read-only.

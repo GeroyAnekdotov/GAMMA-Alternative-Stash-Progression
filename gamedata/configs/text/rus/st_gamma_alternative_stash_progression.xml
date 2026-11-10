@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="ui_mcm_menu_gamma_alternative_stash_progression">
+        <text>GAMMA Alternative Stash Progression</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_progression_info">
+        <text>Альтернативная система получения тайников и инструментов для S.T.A.L.K.E.R. GAMMA. При обыске погибших сталкеров появляется настраиваемый шанс узнать координаты обычного или жёлтого тайника. При этом стандартная прогрессия через задания сохраняется, а оба способа получения тайников используют общую прогрессию инструментов. Мод поддерживает пресеты MCM и работает в любом игровом режиме.\n\nОсобенно полезен для изолированных группировок, таких как UNISG, Ренегаты или Зомбированные, у которых доступ к персонажам, выдающим задания, может быть ограничен. Из-за этого стандартная прогрессия GAMMA становится значительно сложнее, требует больше времени, а иногда и вовсе оказывается недоступной.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_mechanics_info">
+        <text>Каждый подходящий труп проверяется только один раз. Шанс обнаружить тайник и вероятность того, что он окажется жёлтым, настраиваются отдельно. Проверка жёлтого тайника происходит только после успешного обнаружения обычного.\n\nТайники, полученные при обыске, не расходуют накопленный прогресс заданий GAMMA. При этом жёлтые тайники из обоих источников используют общую прогрессию инструментов.\n\nСодержимое тайника определяется оригинальными правилами GAMMA с учётом его расположения и уже открытых уровней инструментов. Если выпал набор инструментов, соответствующий уровень открывается сразу при создании тайника, даже если игрок ещё не забрал его содержимое.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled">
+        <text>Включить мод</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled_desc">
+        <text>По умолчанию включено. Управляет попытками мода найти тайник при обыске погибших сталкеров во всех режимах. Обычные награды за задания GAMMA остаются доступны.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled_hint">
+        <text>Включает или выключает поиск тайников при обыске во всех режимах. На награды за задания не влияет.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers">
+        <text>Учитывать зомбированных сталкеров</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers_desc">
+        <text>По умолчанию выключено. При включении для подходящих зомбированных сталкеров действуют те же шансы и правило одной попытки. На добычу с мутантов настройка не влияет.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers_hint">
+        <text>При обыске зомбированных сталкеров действуют те же шансы, что и для остальных. По умолчанию выключено.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode">
+        <text>Режим отладки</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode_desc">
+        <text>По умолчанию выключен. Записывает в журнал X-Ray результаты проверок и бросков, выпавшую добычу, открытые уровни инструментов и счётчик наград за задания. Начальное состояние записывается даже при выключенном поиске тайников с трупов.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode_hint">
+        <text>Записывает в журнал X-Ray броски, открытие уровней инструментов и прогресс заданий.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset">
+        <text>Пресет шансов</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset_desc">
+        <text>Пресет задаёт оба шанса. При ручной настройке одного ползунка второй сохраняет своё значение. Если пара значений не совпадает ни с одним из четырёх пресетов, отображается «Свои настройки».\n\nВторой бросок делается только после успеха первого. Перемножьте оба шанса, чтобы узнать вероятность запроса жёлтого тайника при обыске подходящего трупа.\n\nМедленная — 3% x 12% = 0,36%, примерно 1 из 278.\nСредняя — 5% x 16% = 0,80%, примерно 1 из 125.\nБыстрая — 8% x 16% = 1,28%, примерно 1 из 78.\nОчень быстрая (по умолчанию) — 16% x 16% = 2,56%, примерно 1 из 39.\n\nЭто средние значения для большого числа попыток. Вместо инструментов в жёлтом тайнике может оказаться набор для снаряжения патронов или изготовления медикаментов.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset_hint">
+        <text>Пресет меняет оба ползунка. «Свои настройки» означают, что текущие шансы не совпадают ни с одним пресетом. Указаны средние значения.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance">
+        <text>Шанс тайника с трупа (%)</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance_desc">
+        <text>Первый бросок при обыске погибшего сталкера определяет шанс получения координат тайника. На каждый подходящий труп даётся одна попытка. Загрузка сохранения, сделанного после попытки, не даёт новой.\n\nGAMMA или другой мод может независимо выдать координаты тайника при обыске того же сталкера. Поэтому иногда появляются два уведомления.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance_hint">
+        <text>Первый бросок на получение координат тайника. Одна попытка на каждый подходящий труп.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance">
+        <text>Шанс жёлтого тайника (%)</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance_desc">
+        <text>После удачного первого броска этот шанс определяет, будет ли запрошен жёлтый тайник. GAMMA выбирает набор с учётом места тайника и открытых уровней. Также могут выпасть наборы для снаряжения патронов или изготовления медикаментов.\n\nОбщий шанс равен произведению значений двух ползунков. У пресета «Очень быстрая» это 16% x 16% = 2,56%, в среднем примерно одна удачная попытка на 39 подходящих трупов.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance_hint">
+        <text>Шанс запросить жёлтый тайник после удачного первого броска. Набор выбирается по правилам добычи GAMMA.</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_slow">
+        <text>Медленная — 3% x 12% = 0,36% (~1/278)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_medium">
+        <text>Средняя — 5% x 16% = 0,80% (~1/125)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_fast">
+        <text>Быстрая — 8% x 16% = 1,28% (~1/78)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_very_fast">
+        <text>Очень быстрая (по умолчанию) — 16% x 16% = 2,56% (~1/39)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_custom">
+        <text>Свои настройки</text>
+    </string>
+</string_table>

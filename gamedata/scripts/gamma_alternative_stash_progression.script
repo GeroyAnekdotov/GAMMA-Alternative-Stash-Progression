@@ -1,0 +1,160 @@
+--[[
+    GAMMA Alternative Stash Progression v2.1.0
+    Target game: S.T.A.L.K.E.R. GAMMA 0.9.5
+    Author: GeroyAnekdotov
+
+    Handles Anomaly corpse-use callbacks, eligibility, MCM roll chances and
+    persistent corpse IDs. Delegates stash creation to the GAMMA backend.
+    Preserve the legacy save key and table shape for upgrades.
+
+    Corpse-stash concept by strelloc (strelocc on ModDB), with inspiration
+    from Black Road Revisited. See THIRD_PARTY_NOTICES.md in the repository.
+]]
+
+local SAVE_KEY = "warfare_stash_progression_used_corpses"
+
+local used_corpses = {}
+
+-- Read the committed MCM value, preserving explicit false and zero.
+local function get_setting(key)
+    if ui_mcm then
+        local value = ui_mcm.get("gamma_alternative_stash_progression/" .. key)
+        if value ~= nil then
+            return value
+        end
+    end
+    return gamma_alternative_stash_progression_mcm.get_default(key)
+end
+
+-- Accept numeric MCM values or numeric strings and fall back to the default.
+local function get_chance(key)
+    return tonumber(get_setting(key)) or gamma_alternative_stash_progression_mcm.get_default(key)
+end
+
+-- Report backend failures in the X-Ray log even with Debug Mode off.
+local function log_error(msg)
+    if printf then
+        printf("! GAMMA Alternative Stash Progression | %s", tostring(msg))
+    end
+end
+
+-- Contain backend errors and optionally compare actor state around the attempt.
+-- A cache ID and unlock warning can both be present if the stash survived.
+local function create_stash(rare, trace)
+    local allocated, marked_before, before, observe
+    if trace then
+        before = trace.snapshot()
+        -- Capture the selected box and marker state before GAMMA places loot.
+        observe = function(id)
+            allocated = id
+            marked_before = trace.marker(id, rare)
+        end
+    end
+    local ok, id, failure, unlocks = pcall(gamma_alternative_stash_backend.create, rare, observe)
+    if not ok then
+        failure, id = id, nil
+    end
+    if not id or failure then log_error(failure) end
+    if trace then
+        local after = trace.snapshot()
+        trace.creation(allocated, id, rare, marked_before, failure)
+        trace.comparison(before, after, unlocks)
+    end
+end
+
+-- Return an exclusion reason or nil for an eligible entity. Corpse history
+-- is checked separately after classification.
+local function exclusion(npc)
+    if not get_setting("enabled") then return "mod disabled" end
+    -- Entity class separates stalkers from mutants. Community only filters stalkers.
+    if not npc then return "missing entity" end
+    if not IsStalker(npc) then return "not a stalker" end
+    if npc:alive() then return "stalker is alive" end
+    if character_community(npc) == "zombied" and not get_setting("include_zombified_stalkers") then
+        return "zombified stalkers disabled"
+    end
+end
+
+-- Anomaly's use callback gives each eligible corpse one attempt and rolls
+-- for yellow only after the discovery roll succeeds.
+function npc_on_use(npc)
+    local trace = get_setting("debug_mode") and gamma_alternative_stash_debug
+    local reason = exclusion(npc)
+    if reason then
+        if trace then
+            trace.corpse(npc, used_corpses, false, reason)
+            trace.log("First and second rolls: N/A")
+        end
+        return
+    end
+    local id = npc:id()
+    if trace then
+        trace.corpse(npc, used_corpses, true, used_corpses[id] and "already processed" or "first attempt")
+        if used_corpses[id] then trace.log("First and second rolls: N/A") end
+    end
+    if used_corpses[id] then return end
+    -- Mark the attempt before rolling, even if it misses or stash creation fails.
+    used_corpses[id] = true
+
+    local stash_chance = get_chance("stash_chance")
+    local first = stash_chance > 0 and math.random(1, 100)
+    local success = first and first <= stash_chance
+    if trace then
+        trace.log("First roll: %s; result: %s", first and (first .. " / 100") or "N/A",
+            success and "SUCCESS" or "NO STASH")
+        if not success then trace.log("Second roll: N/A") end
+    end
+    if not success then return end
+
+    local yellow_chance = get_chance("yellow_chance")
+    local second = yellow_chance > 0 and math.random(1, 100)
+    local rare = second and second <= yellow_chance
+    if trace then
+        trace.log("Second roll: %s; result: %s; requested type: %s", second and (second .. " / 100") or "N/A",
+            rare and "SUCCESS" or "NO RARE", rare and "RARE" or "ORDINARY")
+    end
+    create_stash(rare, trace)
+end
+
+-- Log a startup snapshot when Debug Mode is enabled, even with rolls disabled.
+local function actor_on_first_update()
+    if get_setting("debug_mode") then gamma_alternative_stash_debug.initial_snapshot() end
+end
+
+-- Release a removed stalker's server ID so the engine can safely reuse it.
+function server_entity_on_unregister(se_npc, kind)
+    if kind == "se_stalker" and se_npc then
+        -- This server entity is gone. Its numeric ID may be reused.
+        used_corpses[se_npc.id] = nil
+    end
+end
+
+-- Store the current used-ID table under the historical key in Anomaly's save.
+function save_state(m)
+    m[SAVE_KEY] = used_corpses
+end
+
+-- Replace the active IDs with this save's table or start empty for older saves.
+function load_state(m)
+    used_corpses = m[SAVE_KEY] or {}
+end
+
+-- Check the virtual script directory so startup order cannot activate both copies.
+function legacy_script_present()
+    return getFS():exist("$game_scripts$", "warfare_stash_progression.script")
+end
+
+-- Register the use, first-update, entity-removal and save/load callbacks.
+-- Defer to a visible legacy script to prevent duplicate handling.
+function on_game_start()
+    if legacy_script_present() then
+        log_error("Legacy gameplay script detected. Disable the old MO2 mod and restart to use this version.")
+        return
+    end
+
+    RegisterScriptCallback("npc_on_use", npc_on_use)
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("server_entity_on_unregister", server_entity_on_unregister)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+end

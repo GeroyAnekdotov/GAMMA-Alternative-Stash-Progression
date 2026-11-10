@@ -1,0 +1,199 @@
+--[[
+    GAMMA Alternative Stash Progression v2.1.0
+    Target game: S.T.A.L.K.E.R. GAMMA 0.9.5
+    Author: GeroyAnekdotov
+
+    Reports progression snapshots, corpse-roll outcomes and stash results
+    through Anomaly's logger. Observes actor state and GAMMA cache data
+    without selecting loot or changing save state.
+
+    See THIRD_PARTY_NOTICES.md in the repository.
+]]
+
+local PROGRESS = {
+    "toolkit_reward_count", "toolkit_reward_last",
+    "actor_find_basic_kit", "actor_find_advanced_kit", "actor_find_expert_kit",
+}
+local UNKNOWN = "UNKNOWN"
+local TOOLKIT_SECTIONS = {
+    itm_basickit = true, itm_advancedkit = true, itm_expertkit = true,
+    itm_ammokit = true, itm_drugkit = true,
+}
+
+-- Format a diagnostic under the stable prefix used to filter X-Ray logs.
+function log(fmt, ...)
+    if printf then printf("%s", "[GASP DEBUG] " .. string.format(fmt, ...)) end
+end
+
+-- Return both task variables and the three native toolkit flags, or nil
+-- if the actor is unavailable or the read fails.
+function snapshot()
+    -- Keep engine reads inside a protected call.
+    local ok, state = pcall(function()
+        if not (db and db.actor and load_var and has_alife_info) then return end
+        local actor = db.actor
+        local state = {
+            toolkit_reward_count = load_var(actor, "toolkit_reward_count"),
+            toolkit_reward_last = load_var(actor, "toolkit_reward_last"),
+        }
+        for i = 3, #PROGRESS do
+            local key = PROGRESS[i]
+            state[key] = not not has_alife_info(key)
+        end
+        return state
+    end)
+    if ok then return state end
+end
+
+-- Distinguish an unset actor variable from a stored zero or false.
+local function value_text(value)
+    if value == nil then return "unset" end
+    return tostring(value)
+end
+
+-- Estimate increments to eligibility and the native rare roll for this count.
+-- Actual task completion effects decide whether to request a stash at all.
+function task_gate(state)
+    -- Trust the gate settings only after verifying the installed setter chain.
+    local ok, threshold, start = pcall(function()
+        if not gamma_alternative_stash_backend.verified_manager() then return end
+        local ini = treasure_manager and treasure_manager.ini_treasure
+        if not ini then return end
+        return ini:r_float_ex("settings_rare", "completed_task_num"),
+            ini:r_float_ex("settings_rare", "start_chance")
+    end)
+    local count = state and (state.toolkit_reward_count or 0)
+    if ok and type(count) == "number" and type(threshold) == "number" and threshold > 0
+        and type(start) == "number" then
+        local remaining = math.max(0, math.ceil(threshold - count))
+        -- The installed manager uses a strict comparison against an integer roll.
+        local chance = remaining == 0 and math.max(0, math.min(100, math.ceil(start * count / threshold) - 1)) or 0
+        log("Task count: %s; rare eligibility threshold: %s; increments until eligibility: %d; native gate chance: %d%%",
+            value_text(state.toolkit_reward_count), tostring(threshold), remaining, chance)
+        log("Next task reward invokes stash creation: UNKNOWN (task-dependent). Completion effects can create a stash before the task counter increments. Eligibility does not guarantee a yellow stash.")
+    else
+        log("Task count: %s; rare eligibility threshold, increments and gate chance: UNKNOWN",
+            state and value_text(state.toolkit_reward_count) or UNKNOWN)
+    end
+end
+
+-- Log starting actor progress and the native gate before any corpse attempts.
+function initial_snapshot()
+    local state = snapshot()
+    log("=== INITIAL GAMMA PROGRESSION ===")
+    if state then
+        for _, key in ipairs(PROGRESS) do log("%s: %s", key, value_text(state[key])) end
+    end
+    task_gate(state)
+end
+
+-- Read the stored chance without asking MCM to create missing defaults.
+local function configured_chance(key)
+    -- The config read may fail during startup or on unsupported profiles.
+    local ok, value = pcall(function()
+        local config = axr_main and axr_main.config
+        if config then return config:r_value("mcm", "gamma_alternative_stash_progression/" .. key, 2) end
+    end)
+    if not ok then return UNKNOWN end
+    return value or gamma_alternative_stash_progression_mcm.get_default(key)
+end
+
+-- Compare actor snapshots. Treat the two task variables as protected and
+-- attribute confirmed false-to-true toolkit flags to this corpse request.
+function comparison(before, after, unlocks)
+    log("=== GAMMA PROGRESSION ===")
+    if not before or not after then
+        log("Task progression unchanged: UNKNOWN (actor state unavailable)")
+        return
+    end
+    local unchanged = true
+    for i, key in ipairs(PROGRESS) do
+        local a, b = before[key], after[key]
+        log("%s: %s -> %s", key, value_text(a), value_text(b))
+        if i <= 2 and a ~= b then
+            unchanged = false
+            log("WARNING: protected state changed: %s (%s -> %s)", key, value_text(a), value_text(b))
+        elseif i > 2 and a ~= b then
+            if unlocks and unlocks[key] and not a and b then
+                log("Toolkit unlocked: %s; source: CORPSE STASH", key)
+            else
+                log("WARNING: unexpected toolkit flag change: %s (%s -> %s)", key, value_text(a), value_text(b))
+            end
+        end
+    end
+    log("Task progression unchanged: %s", unchanged and "YES" or "NO")
+    task_gate(after)
+end
+
+-- Report eligibility, prior use and configured chances without rolling.
+function corpse(npc, used, eligible, reason)
+    -- The NPC may be absent or unavailable when logging an exclusion.
+    local id_ok, id = pcall(function() return npc and npc:id() end)
+    -- Read community only after the engine identifies a stalker.
+    local community_ok, community = pcall(function()
+        if npc and IsStalker(npc) then return character_community(npc) end
+    end)
+    log("Corpse ID: %s; community: %s; eligible: %s; reason: %s; already processed: %s",
+        id_ok and id and tostring(id) or UNKNOWN, community_ok and community or UNKNOWN,
+        eligible and "YES" or "NO", reason,
+        id_ok and id and (used[id] and "YES" or "NO") or UNKNOWN)
+    log("Stash chance (%%): %s; yellow chance (%%): %s",
+        tostring(configured_chance("stash_chance")), tostring(configured_chance("yellow_chance")))
+end
+
+-- Return whether the expected map spot exists, or nil if it cannot be read.
+function marker(id, rare)
+    -- Preserve the distinction between a missing marker and an unavailable API.
+    local ok, present = pcall(function()
+        if not (level and level.map_has_object_spot) then return end
+        local n = level.map_has_object_spot(id, rare and "treasure_searched" or "treasure")
+        if type(n) == "number" then return n > 0 end
+    end)
+    if ok then return present end
+end
+
+-- Resolve the allocated box's level, falling back to UNKNOWN on lookup failure.
+function location(id)
+    -- A server object or game graph vertex may disappear before inspection.
+    local ok, name = pcall(function()
+        local box = alife_object(id)
+        if box then return alife():level_name(game_graph():vertex(box.m_game_vertex_id):level_id()) end
+    end)
+    return ok and name or UNKNOWN
+end
+
+-- Log allocation, marker changes and cache confirmation separately.
+-- For a confirmed rare cache, report the toolkit sections actually queued.
+function creation(allocated, id, rare, was_marked, failure)
+    if not allocated then
+        log("Allocation: NO; cache creation: NO; marker creation: N/A; reason: %s", tostring(failure))
+        return
+    end
+    local marked = marker(allocated, rare)
+    local marker_change = UNKNOWN
+    if was_marked == true then
+        marker_change = "NO (already present)"
+    elseif was_marked == false and marked ~= nil then
+        marker_change = marked and "YES" or "NO"
+    end
+    log("Allocation: YES; stash ID: %s; location: %s; marker creation: %s",
+        tostring(allocated), location(allocated), marker_change)
+    if id then
+        log("Cache creation: CONFIRMED; created type: %s", rare and "RARE" or "ORDINARY")
+        if rare then
+            local caches = treasure_manager and treasure_manager.caches
+            local contents = caches and caches[id]
+            local toolkits = {}
+            if type(contents) == "string" then
+                for section in contents:gmatch("[^,]+") do
+                    if TOOLKIT_SECTIONS[section] then toolkits[#toolkits + 1] = section end
+                end
+            end
+            local result = type(contents) ~= "string" and UNKNOWN
+                or (#toolkits > 0 and table.concat(toolkits, ", ") or "NONE")
+            log("Generated toolkit: %s; source: CORPSE STASH", result)
+        end
+    else
+        log("Cache creation: UNCONFIRMED; created type: UNKNOWN; reason: %s", tostring(failure))
+    end
+end

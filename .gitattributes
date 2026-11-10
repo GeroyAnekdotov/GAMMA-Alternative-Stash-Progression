@@ -1,0 +1,2 @@
+* text=auto eol=lf
+gamedata/configs/text/**/*.xml -text

@@ -1,0 +1,253 @@
+--[[
+    GAMMA Alternative Stash Progression v2.1.0
+    Target game: S.T.A.L.K.E.R. GAMMA 0.9.5
+    Author: GeroyAnekdotov
+
+    Integrates with the audited Rare Stashes Balance manager and supported
+    wrappers. Uses native allocation and loot without spending task rewards.
+    Commits shared toolkit flags after verifying the generated rare contents.
+    Depends on the installed script sources and Anomaly's Lua introspection API.
+
+    See THIRD_PARTY_NOTICES.md in the repository.
+]]
+
+local MANAGER = "treasure_manager.script"
+-- Fingerprints of normalized source bytes from the audited MO2 profile.
+local SOURCES = {
+    [MANAGER] = {35682, 883669572, 410690344},
+    ["descriptive_stash_coordinates.script"] = {1573, 1464909968, 42172121},
+    ["rng_attachments_core.script"] = {19086, 1354136625, 525223408},
+}
+local DELEGATES = {
+    ["descriptive_stash_coordinates.script"] = {16, "treasure_manager_set_random_stash"},
+    ["rng_attachments_core.script"] = {93, "original_set_random_stash"},
+}
+local CAPTURES = {"item_list", "stash_rare", "stash_common", "map_tiers", "tools_map_tiers", "dbg_items"}
+local TOOLKIT_FLAGS = {
+    itm_basickit = "actor_find_basic_kit",
+    itm_advancedkit = "actor_find_advanced_kit",
+    itm_expertkit = "actor_find_expert_kit",
+}
+local checked = {}
+local isolated_setter
+
+-- Read the effective MO2 script once and cache its normalized source or false.
+-- The adapter must decline requests when installed source bytes differ.
+local function checked_source(name)
+    if checked[name] ~= nil then return checked[name] end
+    local expected = SOURCES[name]
+    local path = getFS():update_path("$game_scripts$", name)
+    local file = type(path) == "string" and io and io.open and io.open(path, "rb")
+    if not file then
+        checked[name] = false
+        return false
+    end
+    local source = file:read("*a")
+    file:close()
+    if source then
+        source = source:gsub("\r\n", "\n")
+        if #source == expected[1] then
+            local a, b = 0, 0
+            for i = 1, #source do
+                local byte = source:byte(i)
+                a = (a * 131 + byte) % 2147483647
+                b = (b * 257 + byte) % 2147483629
+            end
+            if a == expected[2] and b == expected[3] then
+                checked[name] = source
+                return source
+            end
+        end
+    end
+    checked[name] = false
+    return false
+end
+
+-- Return the source basename and definition span for a Lua function.
+local function origin(fn)
+    if type(fn) ~= "function" then return end
+    local info = debug.getinfo(fn, "S")
+    local name = info.source:lower():gsub("\\", "/"):match("([^/@]+)$")
+    return name, info.lastlinedefined - info.linedefined
+end
+
+-- Return the named upvalue's index and value for guarded inspection or binding.
+local function find_upvalue(fn, wanted)
+    for i = 1, math.huge do
+        local name, value = debug.getupvalue(fn, i)
+        if not name then return end
+        if name == wanted then return i, value end
+    end
+end
+
+-- Walk only recognized wrappers. Return the verified native setter and the
+-- wrapper function and slot that delegate directly to it, if present.
+local function find_native(entry)
+    local fn, parent, slot = entry
+    local seen = {}
+    while fn do
+        local name, lines = origin(fn)
+        if not name or not SOURCES[name] or seen[name] or not checked_source(name) then return end
+        if name == MANAGER then
+            if lines == 310 and getfenv(fn) == treasure_manager then return fn, parent, slot end
+            return
+        end
+        local delegate = DELEGATES[name]
+        if lines ~= delegate[1] then return end
+        seen[name] = true
+        parent = fn
+        slot, fn = find_upvalue(fn, delegate[2])
+    end
+end
+
+-- Compile the installed setter privately, skipping its task gate so it
+-- cannot reset the count or advance the reward index. Redirect toolkit
+-- writes to the caller and bind the live native loot tables on each request.
+-- A source or closure mismatch throws before cache generation.
+local function prepare_rare(native)
+    if not isolated_setter then
+        local source = checked_source(MANAGER)
+        local first = assert(source:find("\nfunction set_random_stash(", 1, true))
+        local last = assert(source:find("\nend\n", first, true))
+        local body = source:sub(first + 1, last + 3)
+        local gate = assert(body:find("\n\t-- Rare stashes contain toolkits", 1, true))
+        local loot = assert(body:find("\n\tlocal min_weight = is_rare", gate, true))
+        body = body:sub(1, gate - 1) .. body:sub(loot)
+        local gates, writes, signatures
+        body, gates = body:gsub("local is_rare = false", "local is_rare = true")
+        body, writes = body:gsub('db%.actor:give_info_portion%("(actor_find_%a+_kit)"%)', 'stage_toolkit_flag("%1")')
+        body, signatures = body:gsub("^function set_random_stash%(no_spot, hint, bonus_items, id, dbg%)",
+            "return function(no_spot, hint, bonus_items, id, dbg, stage_toolkit_flag, has_alife_info)", 1)
+        assert(gates == 1 and writes == 9 and signatures == 1, "unexpected rare adapter edit count")
+        isolated_setter = assert(loadstring("local " .. table.concat(CAPTURES, ",") .. "\n" .. body,
+            "@gasp_isolated_rare"))()
+    end
+    -- Keep the native lookup environment and live cache table, while any
+    -- incidental global scratch assignments stay in this invocation.
+    setfenv(isolated_setter, setmetatable({}, {__index = getfenv(native)}))
+    local bound = 0
+    for i = 1, math.huge do
+        local name = debug.getupvalue(isolated_setter, i)
+        if not name then break end
+        local _, value = find_upvalue(native, name)
+        assert(type(value) == "table", "missing native loot table " .. name)
+        assert(debug.setupvalue(isolated_setter, i, value) == name)
+        bound = bound + 1
+    end
+    assert(bound == #CAPTURES, "unexpected rare adapter capture layout")
+    return isolated_setter
+end
+
+-- Use the ordinary marker to bypass rarity or invoke the isolated rare copy.
+-- When wrappers are present, scope the delegate to this one free box and
+-- restore it before returning the setter result or rethrowing a failure.
+local function call_setter(entry, native, parent, slot, id, hint, staged)
+    local setter = native
+    local marker = not staged and "treasure" or nil
+    if staged then
+        local isolated = prepare_rare(native)
+        -- Record a proposed native unlock without changing actor state.
+        local function stage(flag) staged[flag] = true end
+        -- Preserve the setter's read-after-write behavior within this request.
+        local function is_unlocked(flag) return staged[flag] or has_alife_info(flag) end
+        -- Adapt the wrapper's normal setter signature to the staged rare copy.
+        setter = function(no_spot, text, bonus, box)
+            return isolated(no_spot, text, bonus, box, nil, stage, is_unlocked)
+        end
+    end
+    if not parent then return setter(marker, hint, nil, id) end
+
+    -- Keep the wrappers and their real closure state. Intercept only this
+    -- allocation, once, at the innermost delegate. Restore on every exit.
+    local called, setter_error = false, nil
+    -- Route unrelated boxes to the native setter and allow our box once.
+    local function dispatch(no_spot, text, bonus, box, dbg)
+        if box ~= id then return native(no_spot, text, bonus, box, dbg) end
+        if called or no_spot ~= marker or dbg or treasure_manager.caches[box] ~= false then return end
+        called = true
+        -- Let Descriptive Stash Coordinates clear its notification flags even
+        -- when the native setter throws, then report the error to our caller.
+        local ok, result = pcall(setter, marker, text, bonus, box)
+        if not ok then setter_error = result; return end
+        return result
+    end
+    local name = debug.getupvalue(parent, slot)
+    assert(debug.setupvalue(parent, slot, dispatch) == name, "could not install scoped stash delegate")
+    local ok, result = pcall(entry, marker, hint, nil, id)
+    assert(debug.setupvalue(parent, slot, native) == name, "could not restore stash delegate")
+    if not ok then error(result, 0) end
+    if setter_error then error(setter_error, 0) end
+    return result
+end
+
+-- Apply only staged unlocks that match actual item sections in the confirmed
+-- cache. Preserve existing flags and record each new unlock for diagnostics.
+local function commit_toolkit_flags(actor, contents, staged, committed)
+    assert(db.actor == actor, "actor changed before toolkit unlock")
+    for section in contents:gmatch("[^,]+") do
+        local flag = TOOLKIT_FLAGS[section]
+        if flag and staged[flag] and not has_alife_info(flag) then
+            actor:give_info_portion(flag)
+            committed[flag] = true
+        end
+    end
+end
+
+-- Check the setter chain before diagnostics read the native rare-gate settings.
+function verified_manager()
+    local manager = treasure_manager
+    return manager and debug and debug.getinfo and debug.getupvalue and getfenv
+        and find_native(manager.set_random_stash) ~= nil
+end
+
+-- Allocate one compatible cache and optionally notify the caller before
+-- generation. Return nil and a reason for rejected or unconfirmed requests.
+-- On success return the box ID, an optional unlock warning and committed flags.
+-- Unexpected Lua errors are handled by the caller's protected call.
+function create(rare, on_allocated)
+    local manager = treasure_manager
+    if not (manager and type(manager.get_random_stash) == "function" and debug
+        and debug.getinfo and debug.getupvalue and getfenv) then
+        return nil, "GAMMA stash API or Lua introspection unavailable"
+    end
+    local entry = manager.set_random_stash
+    local native, parent, slot = find_native(entry)
+    local chooser_name, chooser_lines = origin(manager.get_random_stash)
+    if not native or chooser_name ~= MANAGER or chooser_lines ~= 92
+        or getfenv(manager.get_random_stash) ~= manager then
+        return nil, "unsupported GAMMA stash manager or wrapper chain"
+    end
+    if parent and not debug.setupvalue then return nil, "scoped wrapper API unavailable" end
+    local actor = rare and db and db.actor
+    if rare and not (actor and has_alife_info and loadstring and setfenv and debug.setupvalue) then
+        return nil, "isolated rare stash requires a live actor and the Lua adapter API"
+    end
+
+    -- nil retains the ordinary map filter. The explicit marker is passed to
+    -- the setter only, after the chooser has validated the location.
+    local id, name, desc, hint = manager.get_random_stash(nil, nil, math.random() > 0.75)
+    if not id then return nil, "no available GAMMA cache" end
+    if not manager.caches or manager.caches[id] ~= false then
+        return nil, "selected GAMMA cache is no longer free"
+    end
+    if on_allocated then on_allocated(id) end
+    local text = name
+    if desc and hint then
+        text = "%c[255,255,160,0]" .. name .. "\\n%c[default]" .. desc .. "\\n%c[160,100,100,200]" .. hint
+    end
+    local staged = rare and {}
+    local result = call_setter(entry, native, parent, slot, id, text, staged)
+    local contents = manager.caches[id]
+    if result ~= id or type(contents) ~= "string" or contents == "" then
+        return nil, "GAMMA did not confirm nonempty cache contents"
+    end
+    if staged and next(staged) then
+        -- The native rare branches decide which flags to stage. Commit only
+        -- those that match actual items in the confirmed cache.
+        local committed = {}
+        local ok, err = pcall(commit_toolkit_flags, actor, contents, staged, committed)
+        if not ok then return id, "toolkit unlock failed after cache creation: " .. tostring(err), committed end
+        return id, nil, committed
+    end
+    return id
+end

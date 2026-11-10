@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="ui_mcm_menu_gamma_alternative_stash_progression">
+        <text>GAMMA Alternative Stash Progression</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_progression_info">
+        <text>Alternative stash and toolkit progression for S.T.A.L.K.E.R. GAMMA. Search dead stalkers for a configurable chance to discover normal or yellow stashes while preserving GAMMA's original task-based progression. Both methods share toolkit unlocks. Includes MCM presets and works in any game mode.\n\nParticularly useful for isolated factions such as UNISG, Renegades, or Zombified, where access to task-giving NPCs may be limited, making default GAMMA progression much harder, grindier, or even impossible.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_mechanics_info">
+        <text>Each eligible corpse is checked only once. Stash discovery chance and yellow stash chance can be configured separately. The yellow stash roll only occurs after a successful stash discovery roll.\n\nCorpse-generated stashes do not consume GAMMA's accumulated task reward progress. Yellow stashes from both sources share the same toolkit progression.\n\nStash contents follow GAMMA's original loot rules, based on stash location and previously unlocked toolkit tiers. When a toolkit is generated, its tier is unlocked immediately, even if the player has not collected the stash contents.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled">
+        <text>Enable Mod</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled_desc">
+        <text>On by default. Controls this mod's stash rolls when you search a dead stalker in any game mode. GAMMA's regular task rewards stay available.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_enabled_hint">
+        <text>Turn corpse-stash rolls on or off in all game modes. Task rewards are unaffected.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers">
+        <text>Include Zombified Stalkers</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers_desc">
+        <text>Off by default. Eligible zombified stalkers use the same stash chances and one-attempt rule as other stalkers. Mutant loot is unaffected.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_include_zombified_stalkers_hint">
+        <text>Let eligible zombified stalkers use the same stash chances as ordinary stalkers. Off by default.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode">
+        <text>Debug Mode</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode_desc">
+        <text>Off by default. Records eligibility, rolls, generated loot, toolkit unlocks and the task reward counter in the X-Ray log. An initial snapshot is available even when corpse rolls are disabled.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_debug_mode_hint">
+        <text>Record stash rolls, toolkit unlocks and task progress in the X-Ray log.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset">
+        <text>Chance Preset</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset_desc">
+        <text>Choosing a preset moves both sliders. Editing a slider leaves the other alone. Custom appears whenever the pair differs from all four presets.\n\nThe second roll happens only after the first succeeds. Multiply the two chances to find the chance of requesting a yellow stash per eligible corpse.\n\nSlow — 3% x 12% = 0.36%, about 1 in 278.\nMedium — 5% x 16% = 0.80%, about 1 in 125.\nFast — 8% x 16% = 1.28%, about 1 in 78.\nVery Fast (default) — 16% x 16% = 2.56%, about 1 in 39.\n\nThese are averages over many attempts. A yellow stash may contain an ammo or medical kit instead of repair tools.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_preset_hint">
+        <text>A preset sets both sliders. Custom means the current chances do not match any preset. The listed odds are long-run averages.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance">
+        <text>Stash Chance (%)</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance_desc">
+        <text>This is the first roll when you loot a dead stalker. It determines whether the mod tries to reveal stash coordinates. Each eligible corpse gets one attempt, including across saves.\n\nOther GAMMA systems or addons can independently reveal a stash from the same corpse, so you may occasionally see two stash notifications.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_stash_chance_hint">
+        <text>First roll for stash coordinates. Each eligible corpse gets one attempt.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance">
+        <text>Yellow Stash Chance (%)</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance_desc">
+        <text>After a successful first roll, this is the chance to request a yellow stash. GAMMA picks the kit using the stash location and the tiers you have unlocked. Ammo and medical kits can also appear.\n\nThe combined chance is the product of both sliders. The Very Fast default gives 16% x 16% = 2.56%, about 1 in 39 eligible corpses on average.</text>
+    </string>
+    <string id="ui_mcm_gamma_alternative_stash_progression_yellow_chance_hint">
+        <text>Chance to request a yellow stash after the first roll succeeds. The kit depends on GAMMA's loot rules.</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_slow">
+        <text>Slow — 3% x 12% = 0.36% (~1/278)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_medium">
+        <text>Medium — 5% x 16% = 0.80% (~1/125)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_fast">
+        <text>Fast — 8% x 16% = 1.28% (~1/78)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_very_fast">
+        <text>Very Fast (Default) — 16% x 16% = 2.56% (~1/39)</text>
+    </string>
+    <string id="gamma_alternative_stash_progression_preset_lst_gasp_preset_custom">
+        <text>Custom</text>
+    </string>
+</string_table>

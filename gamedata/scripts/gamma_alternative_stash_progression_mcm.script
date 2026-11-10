@@ -1,0 +1,211 @@
+--[[
+    GAMMA Alternative Stash Progression v2.1.0
+    Target game: S.T.A.L.K.E.R. GAMMA 0.9.5
+    Author: GeroyAnekdotov
+
+    Defines the bilingual Anomaly MCM menu, defaults and legacy migration.
+    Derives the preset caption from the displayed rates. MCM applies presets
+    and saves preferences, which gameplay reads when a corpse is used.
+    Keep the namespace, option IDs and both localization tables in sync.
+
+    See THIRD_PARTY_NOTICES.md in the repository.
+]]
+
+local MCM_ID = "gamma_alternative_stash_progression"
+local LEGACY_MCM_ID = "warfare_stash_progression"
+local BOOLEAN = 1
+local NUMBER = 2
+local DEFAULT_PRESET = 4
+local CUSTOM_PRESET = 0
+local PRESET_LABEL = MCM_ID .. "_preset_lst_"
+
+local CHOICES = {
+    {1, "gasp_preset_slow"},
+    {2, "gasp_preset_medium"},
+    {3, "gasp_preset_fast"},
+    {4, "gasp_preset_very_fast"},
+}
+
+local PRESETS = {
+    [1] = {stash_chance = 3, yellow_chance = 12},
+    [2] = {stash_chance = 5, yellow_chance = 16},
+    [3] = {stash_chance = 8, yellow_chance = 16},
+    [4] = {stash_chance = 16, yellow_chance = 16},
+}
+
+local DEFAULTS = {
+    enabled = true,
+    include_zombified_stalkers = false,
+    debug_mode = false,
+    stash_chance = PRESETS[DEFAULT_PRESET].stash_chance,
+    yellow_chance = PRESETS[DEFAULT_PRESET].yellow_chance,
+}
+
+local SETTING_TYPES = {
+    enabled = BOOLEAN,
+    include_zombified_stalkers = BOOLEAN,
+    stash_chance = NUMBER,
+    yellow_chance = NUMBER,
+}
+
+-- Supply the same defaults to MCM and gameplay, including without MCM.
+function get_default(key)
+    return DEFAULTS[key]
+end
+
+-- Return a named preset for an exact rate pair, otherwise the Custom caption ID.
+local function matching_preset(stash, yellow)
+    for index, preset in ipairs(PRESETS) do
+        if stash == preset.stash_chance and yellow == preset.yellow_chance then
+            return index
+        end
+    end
+    return CUSTOM_PRESET
+end
+
+-- Seed MCM's derived caption from committed rates without writing defaults.
+local function saved_preset()
+    local config = axr_main and axr_main.config
+    local stash = config and config:r_value("mcm", MCM_ID .. "/stash_chance", NUMBER)
+    local yellow = config and config:r_value("mcm", MCM_ID .. "/yellow_chance", NUMBER)
+    return matching_preset(stash or DEFAULTS.stash_chance, yellow or DEFAULTS.yellow_chance)
+end
+
+-- Fill absent settings from legacy values, then a saved preset for rates.
+-- Use the MCM config store before menu registration and preserve false and zero.
+local function migrate_settings()
+    local config = axr_main and axr_main.config
+    if not config then return end
+
+    -- MCM get() rejects unregistered paths and can write defaults. Copy stored
+    -- values before returning the menu, using the same config store as MCM.
+    -- A saved preset may fill missing chances, but never overrides a saved rate.
+    local saved_index = config:r_value("mcm", MCM_ID .. "/preset", NUMBER)
+        or config:r_value("mcm", LEGACY_MCM_ID .. "/preset", NUMBER)
+    local preset = PRESETS[saved_index] or {}
+    local changed = false
+    for key, kind in pairs(SETTING_TYPES) do
+        local path = MCM_ID .. "/" .. key
+        if config:r_value("mcm", path, kind) == nil then
+            local legacy_value = config:r_value("mcm", LEGACY_MCM_ID .. "/" .. key, kind)
+            local value = legacy_value
+            if value == nil then value = preset[key] end
+            if value ~= nil then
+                config:w_value("mcm", path, value)
+                changed = true
+            end
+        end
+    end
+    if changed then config:save() end
+end
+
+-- MCM discovery entry point. Migrate preferences and return the localized
+-- menu and its UI hooks, unless a visible legacy copy already owns the menu.
+function on_mcm_load()
+    if gamma_alternative_stash_progression.legacy_script_present() then
+        -- The old copy owns gameplay while its script is visible.
+        return
+    end
+
+    migrate_settings()
+
+    -- Installed MCM 1.7.1's get_gui() cannot see its local GUI. The hooks
+    -- supply the controls and the exact values shown by Register_Track.
+    local control, ready
+    local displayed = {}
+    -- Update the caption from the displayed pair without selecting an item.
+    local function sync_preset()
+        local index = matching_preset(displayed.stash_chance, displayed.yellow_chance)
+        local token = index == CUSTOM_PRESET and "gasp_preset_custom" or CHOICES[index][2]
+        local text = game.translate_string(PRESET_LABEL .. token)
+        if control:GetText() ~= text then control:SetText(text) end
+    end
+
+    -- Reinitialize the new combo's token so the same choice can fire again.
+    local function capture_preset(_, handlers)
+        control, ready = handlers.ctrl, false
+        -- X-Ray emits LIST_ITEM_SELECT only when the token changes. MCM
+        -- rebuilds the combo after a choice, so neutralize it at creation.
+        control:ClearList()
+        for _, choice in ipairs(CHOICES) do
+            control:AddItem(game.translate_string(PRESET_LABEL .. choice[2]), choice[1])
+        end
+    end
+
+    -- Suspend caption updates until both preset rates have been staged.
+    local function preset_changing()
+        -- Ignore the intermediate values while native MCM stages both rates.
+        -- The replacement panel will report both displayed values.
+        ready = false
+    end
+
+    -- Record the text rendered by MCM and resume updates at the last slider.
+    local function capture_slider(_anchor, handlers, _option, flags)
+        displayed[flags.opt] = tonumber(handlers.txt:GetText())
+        -- MCM registers yellow_chance last, after the other slider is ready.
+        if control and flags.opt == "yellow_chance" then
+            ready = true
+            sync_preset()
+        end
+    end
+
+    -- Reflect the edited rate without writing config or moving the other slider.
+    local function slider_changed(_, opt, value)
+        if not ready then return end
+        displayed[opt] = value
+        sync_preset()
+    end
+
+    return {
+        id = MCM_ID,
+        sh = true,
+        gr = {
+            {
+                id = "title",
+                type = "slide",
+                link = "ui_options_slider_player",
+                text = "ui_mcm_menu_" .. MCM_ID,
+                size = {512, 50},
+                spacing = 20,
+            },
+            {
+                id = "progression_info",
+                type = "desc",
+                text = "ui_mcm_" .. MCM_ID .. "_progression_info",
+                clr = {255, 200, 200, 200},
+            },
+            {id = "enabled", type = "check", val = BOOLEAN, def = DEFAULTS.enabled},
+            {id = "include_zombified_stalkers", type = "check", val = BOOLEAN, def = DEFAULTS.include_zombified_stalkers},
+            {id = "debug_mode", type = "check", val = BOOLEAN, def = DEFAULTS.debug_mode},
+            {
+                id = "preset",
+                type = "preset",
+                val = NUMBER,
+                content = CHOICES,
+                presets = PRESETS,
+                def = DEFAULT_PRESET,
+                curr = {saved_preset},
+                ui_hook_functor = {capture_preset},
+                on_selection_functor = {preset_changing},
+            },
+            {
+                id = "stash_chance", type = "track", val = NUMBER, def = DEFAULTS.stash_chance,
+                min = 0, max = 100, step = 1,
+                on_selection_functor = {slider_changed},
+                ui_hook_functor = {capture_slider},
+            },
+            {
+                id = "yellow_chance", type = "track", val = NUMBER, def = DEFAULTS.yellow_chance,
+                min = 0, max = 100, step = 1,
+                on_selection_functor = {slider_changed},
+                ui_hook_functor = {capture_slider},
+            },
+            {
+                id = "mechanics_info",
+                type = "desc",
+                text = "ui_mcm_" .. MCM_ID .. "_mechanics_info",
+                clr = {255, 200, 200, 200},
+            },
+        },
+    }
+end
