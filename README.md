@@ -40,3 +40,11 @@ For a bug report, enable Debug Mode and share the relevant `[GASP DEBUG]` lines 
 Addon by **GeroyAnekdotov**. Corpse-looting concept and original script by strelloc (strelocc on ModDB), with inspiration from Black Road Revisited. Thanks to the Anomaly, GAMMA and Anomaly MCM contributors. [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 See [release notes](RELEASE_NOTES.md), [script architecture](docs/ARCHITECTURE.md) and [development and testing](DEVELOPMENT.md).
+
+## Bug reports and feature requests
+
+Found a bug or have an idea? Use [Bug Report](https://github.com/GeroyAnekdotov/GAMMA-Alternative-Stash-Progression/issues/new?template=bug_report.yml) or [Feature Request](https://github.com/GeroyAnekdotov/GAMMA-Alternative-Stash-Progression/issues/new?template=feature_request.yml). Include your GAMMA/mod versions and relevant logs when reporting a bug.
+
+## License
+
+Original contributions by GeroyAnekdotov are available under the [MIT License](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for third-party materials and licensing limits. The MIT grant does not override upstream authors' rights.
