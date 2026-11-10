@@ -1,0 +1,36 @@
+name: "Feature Request"
+description: "Suggest an improvement or a new feature."
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Suggestions are welcome, but a request does not guarantee implementation."
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What problem would this solve?"
+      description: "Explain the gameplay problem or limitation."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Describe your proposed feature"
+      description: "What would you like to change or add?"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternative solutions"
+      description: "Other ways this could be solved (optional)."
+  - type: input
+    id: game_mode
+    attributes:
+      label: "Relevant game mode or faction"
+      placeholder: "e.g. Warfare / UNISG (optional)"
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional context or screenshots"
