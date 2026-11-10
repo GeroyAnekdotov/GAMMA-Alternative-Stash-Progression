@@ -1,0 +1,70 @@
+name: "Bug Report"
+description: "Report a problem with this mod."
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for helping improve this mod. Please avoid sharing personal information or credentials."
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug description"
+      description: "What happened?"
+      placeholder: "Describe the problem and what you observed."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to reproduce"
+      description: "How can we reproduce this?"
+      placeholder: "1. Load a save...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Expected behavior"
+      description: "What should have happened instead?"
+    validations:
+      required: true
+  - type: input
+    id: gamma_version
+    attributes:
+      label: "GAMMA version"
+      placeholder: "e.g. 0.9.5"
+  - type: input
+    id: mod_version
+    attributes:
+      label: "Mod version"
+      placeholder: "e.g. v2.1.0"
+  - type: dropdown
+    id: mode
+    attributes:
+      label: "Game mode"
+      options:
+        - "Story Mode"
+        - "Warfare"
+        - "Story + Warfare"
+        - "Other / Unknown"
+  - type: textarea
+    id: mods
+    attributes:
+      label: "Other relevant mods"
+      description: "List potential conflicts, patches or WALO version if applicable."
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs and screenshots"
+      description: "Attach screenshots and relevant excerpts from xray_*.log or xray_server.log if available. Remove private information."
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional context"
+    validations:
+      required: false
